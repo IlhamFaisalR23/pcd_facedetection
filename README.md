@@ -9,6 +9,10 @@ Aplikasi berbasis website untuk deteksi wajah secara real-time menggunakan FastA
 - ✅ Backend menggunakan FastAPI
 - ✅ Kotak hijau muncul di sekitar wajah yang terdeteksi
 
+## Daftar Requirement
+- Python 3.9
+- pip
+
 ## 🧾 Struktur Proyek
 
 ```
