@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Media Upload App</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Step 1: Name Section -->
+        <div id="namaSection" class="section active">
+            <div class="welcome-card">
+                <h1>Halo!</h1>
+                <p class="welcome-text">Boleh kenalan dulu dong, siapa nama kamu?</p>
+                <div class="input-group">
+                    <input type="text" id="namaInput" placeholder="Ketik nama kamu di sini..." autocomplete="off">
+                    <button class="button" id="lanjutButton">Lanjut</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 2: Options Section -->
+        <div id="optionsSection" class="section">
+            <h1>Hai, <span id="namaDisplay">Kawan</span>!</h1>
+            <p class="subtitle">Mau pilih yang mana nih?</p>
+            <div class="options-container">
+                <div class="option-card" id="uploadOption">
+                    <div class="option-icon">📁</div>
+                    <h2>Unggah Gambar</h2>
+                    <p>Pilih atau tarik file gambar dari perangkatmu</p>
+                </div>
+                <div class="option-card" id="cameraOption">
+                    <div class="option-icon">📷</div>
+                    <h2>Gunakan Kamera</h2>
+                    <p>Ambil foto menggunakan kamera depan</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 3a: Upload Section -->
+        <div id="uploadSection" class="section">
+            <button class="back-button" id="backFromUpload">← Kembali</button>
+            <h1>Unggah Gambar</h1>
+            <div class="feature-container">
+                <div class="upload-area" id="drop-area">
+                    <div class="icon">📁</div>
+                    <p>Seret file gambar ke sini atau klik untuk memilih</p>
+                    <input type="file" id="fileUpload" accept="image/*">
+                </div>
+                <div class="buttons-row">
+                    <button class="button" id="chooseFileBtn">Pilih File</button>
+                    <button class="button button-secondary" id="viewUploadResultBtn" disabled>Lihat Hasil</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 3b: Camera Section -->
+        <div id="cameraSection" class="section">
+            <button class="back-button" id="backFromCamera">← Kembali</button>
+            <h1>Kamera</h1>
+            <div class="feature-container">
+                <div id="webcamContainer" class="mt-3 d-none">
+                    <img id="webcamFeed" class="webcam-feed">
+                </div>
+                <div class="buttons-row">
+                    <button class="button" id="startWebcam">Mulai Kamera</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 4: Result Section -->
+        <div id="resultSection" class="section">
+            <button class="back-button" id="backFromResult">← Kembali</button>
+            <h1>Hasil</h1>
+            <div class="feature-container result-container">
+                <div class="result-image-container">
+                    <img id="resultImage" alt="Hasil gambar">
+                </div>
+                <button class="button" id="downloadBtn">Unduh Gambar</button>
+                <button class="button button-secondary" id="newSessionBtn">Sesi Baru</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Generate unique user ID
+        function generateUserId() {
+            return Math.random().toString(36).substr(2, 6).toUpperCase();
+        }
+
+        // Store user data and results
+        const userData = {
+            name: '',
+            id: '',
+            imageData: null
+        };
+
+        // Navigation between sections
+        const namaSection = document.getElementById('namaSection');
+        const optionsSection = document.getElementById('optionsSection');
+        const uploadSection = document.getElementById('uploadSection');
+        const cameraSection = document.getElementById('cameraSection');
+        const resultSection = document.getElementById('resultSection');
+        
+        const namaInput = document.getElementById('namaInput');
+        const lanjutButton = document.getElementById('lanjutButton');
+        const namaDisplay = document.getElementById('namaDisplay');
+        
+        const uploadOption = document.getElementById('uploadOption');
+        const cameraOption = document.getElementById('cameraOption');
+        
+        const backFromUpload = document.getElementById('backFromUpload');
+        const backFromCamera = document.getElementById('backFromCamera');
+        const backFromResult = document.getElementById('backFromResult');
+
+        const viewUploadResultBtn = document.getElementById('viewUploadResultBtn');
+
+        const resultNamaDisplay = document.getElementById('resultNamaDisplay');
+        const resultIdDisplay = document.getElementById('resultIdDisplay');
+        const resultMethodDisplay = document.getElementById('resultMethodDisplay');
+        const resultImage = document.getElementById('resultImage');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const newSessionBtn = document.getElementById('newSessionBtn');
+
+        // Step 1 to Step 2 - Enter name and proceed
+        lanjutButton.addEventListener('click', () => {
+            const nama = namaInput.value.trim();
+            if (nama) {
+                // Generate and store user data
+                userData.name = nama;
+                userData.id = generateUserId();
+                
+                // Update display
+                namaDisplay.textContent = nama;
+                
+                switchSection(namaSection, optionsSection);
+            } else {
+                namaInput.classList.add('error');
+                setTimeout(() => namaInput.classList.remove('error'), 500);
+            }
+        });
+
+        // Enter key functionality
+        namaInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                lanjutButton.click();
+            }
+        });
+
+        // Step 2 to Step 3a - Choose Upload
+        uploadOption.addEventListener('click', () => {
+            userData.method = 'Upload';
+            switchSection(optionsSection, uploadSection);
+        });
+
+        // Step 2 to Step 3b - Choose Camera
+        cameraOption.addEventListener('click', () => {
+            userData.method = 'Kamera';
+            switchSection(optionsSection, cameraSection);
+        });
+
+        // Back buttons
+        backFromUpload.addEventListener('click', () => {
+            switchSection(uploadSection, optionsSection);
+        });
+
+        backFromCamera.addEventListener('click', () => {
+            switchSection(cameraSection, optionsSection);
+        });
+
+        backFromResult.addEventListener('click', () => {
+            if (userData.method === 'Upload') {
+                switchSection(resultSection, uploadSection);
+            } else if (userData.method === 'Kamera') {
+                switchSection(resultSection, cameraSection);
+            }
+        });
+
+        // View Results buttons
+        viewUploadResultBtn.addEventListener('click', () => {
+            displayResults();
+            switchSection(uploadSection, resultSection);
+        });
+
+        // New session button
+        newSessionBtn.addEventListener('click', () => {
+            // Reset everything and start over
+            namaInput.value = '';
+            userData.name = '';
+            userData.id = '';
+            userData.method = '';
+            userData.imageData = null;
+            
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            }
+            
+            videoElement.style.display = 'none';
+            placeholderText.style.display = 'block';
+            startCameraBtn.textContent = 'Mulai Kamera';
+            viewUploadResultBtn.disabled = true;
+            
+            // Reset upload area
+            dropArea.innerHTML = `<div class="icon">📁</div><p>Seret file gambar ke sini atau klik untuk memilih</p>`;
+            const newFileInput = document.createElement('input');
+            newFileInput.type = 'file';
+            newFileInput.id = 'fileUpload';
+            newFileInput.accept = 'image/*';
+            newFileInput.addEventListener('change', handleFiles, false);
+            dropArea.appendChild(newFileInput);
+            
+            switchSection(resultSection, namaSection);
+        });
+
+        // Download button
+        downloadBtn.addEventListener('click', () => {
+            if (userData.imageData) {
+                const link = document.createElement('a');
+                link.href = userData.imageData;
+                link.download = `${userData.name}_${userData.id}.png`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        });
+
+        function switchSection(fromSection, toSection) {
+            fromSection.classList.remove('active');
+            fromSection.classList.add('fade-out');
+            
+            setTimeout(() => {
+                fromSection.classList.remove('fade-out');
+                fromSection.style.display = 'none';
+                
+                toSection.style.display = 'block';
+                setTimeout(() => {
+                    toSection.classList.add('active');
+                }, 50);
+            }, 300);
+        }
+
+        function displayResults() {
+            if (userData.imageData) {
+                resultImage.src = userData.imageData;
+            }
+        }
+
+
+        // File upload handling
+        const dropArea = document.getElementById('drop-area');
+        const fileInput = document.getElementById('fileUpload');
+        const chooseFileBtn = document.getElementById('chooseFileBtn');
+
+        // Prevent default drag behaviors
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, preventDefaults, false);
+            document.body.addEventListener(eventName, preventDefaults, false);
+        });
+
+        // Highlight drop area when a file is dragged over it
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropArea.addEventListener(eventName, highlight, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, unhighlight, false);
+        });
+
+        // Handle dropped files
+        dropArea.addEventListener('drop', handleDrop, false);
+        fileInput.addEventListener('change', handleFiles, false);
+        chooseFileBtn.addEventListener('click', () => fileInput.click());
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        function highlight() {
+            dropArea.classList.add('highlight');
+        }
+
+        function unhighlight() {
+            dropArea.classList.remove('highlight');
+        }
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            handleFiles({target: {files}});
+        }
+
+        function handleFiles(e) {
+            const files = e.target.files;
+            if (files.length > 0) {
+                const file = files[0];
+                if (file.type.startsWith('image/')) {
+                    // Read the file and set as image data
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        userData.imageData = event.target.result;
+                        dropArea.innerHTML = `<div class="icon">✅</div><p>File dipilih: ${file.name}</p><img src="${event.target.result}" alt="Preview" class="preview-image">`;
+                        viewUploadResultBtn.disabled = false;
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    dropArea.innerHTML = `<div class="icon">❌</div><p>File harus berupa gambar</p>`;
+                    viewUploadResultBtn.disabled = true;
+                    
+                    setTimeout(() => {
+                        dropArea.innerHTML = `<div class="icon">📁</div><p>Seret file gambar ke sini atau klik untuk memilih</p>`;
+                        const newFileInput = document.createElement('input');
+                        newFileInput.type = 'file';
+                        newFileInput.id = 'fileUpload';
+                        newFileInput.accept = 'image/*';
+                        newFileInput.addEventListener('change', handleFiles, false);
+                        dropArea.appendChild(newFileInput);
+                    }, 2000);
+                }
+            }
+        }
+
+        // Handle webcam
+        document.getElementById('startWebcam').addEventListener('click', () => {
+            const webcamContainer = document.getElementById('webcamContainer');
+            const webcamFeed = document.getElementById('webcamFeed');
+            const button = document.getElementById('startWebcam');
+            
+            if (webcamContainer.classList.contains('d-none')) {
+                webcamFeed.src = '/webcam';
+                webcamContainer.classList.remove('d-none');
+                button.textContent = 'Stop Webcam';
+                button.classList.remove('btn-primary');
+                button.classList.add('btn-danger');
+            } else {
+                webcamFeed.src = '';
+                webcamContainer.classList.add('d-none');
+                button.textContent = 'Start Webcam';
+                button.classList.remove('btn-danger');
+                button.classList.add('btn-primary');
+            }
+        });
+    </script>
+</body>
+</html>
