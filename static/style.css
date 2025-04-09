@@ -10,8 +10,11 @@
 }
 
 #webcamContainer {
-    width: 80%;
-    overflow-x: auto; /* Supaya kalau lebih lebar dari container, bisa scroll */
+    transform: scaleX(-1);
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: none;
 }
 
 .result-image, .webcam-feed {

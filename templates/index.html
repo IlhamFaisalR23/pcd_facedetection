@@ -60,8 +60,12 @@
             <button class="back-button" id="backFromCamera">← Kembali</button>
             <h1>Kamera</h1>
             <div class="feature-container">
-                <div id="webcamContainer" class="mt-3 d-none">
-                    <img id="webcamFeed" class="webcam-feed">
+                
+                <div class="camera-placeholder" id="cameraPlaceholder">
+                    <div id="webcamContainer" class="mt-3 d-none">
+                        <img id="webcamFeed" class="camera-placeholder">
+                    </div>
+                    <canvas id="canvasElement" style="display: none;"></canvas>
                 </div>
                 <div class="buttons-row">
                     <button class="button" id="startWebcam">Mulai Kamera</button>
