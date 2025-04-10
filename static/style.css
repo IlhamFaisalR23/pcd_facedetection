@@ -1,7 +1,3 @@
-
-.container {
-    max-width: 800px;
-}
 .card {
     border: none;
     border-radius: 8px;
@@ -10,11 +6,8 @@
 }
 
 #webcamContainer {
-    transform: scaleX(-1);
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: none;
+    width: 80%;
+    overflow-x: auto;
 }
 
 .result-image, .webcam-feed {
