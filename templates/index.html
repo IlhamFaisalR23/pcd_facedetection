@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Media Upload App</title>
+    <title>Deteksi Ras</title>
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
@@ -48,8 +48,10 @@
                     <p>Seret file gambar ke sini atau klik untuk memilih</p>
                     <input type="file" id="fileUpload" accept="image/*">
                 </div>
+                <div class="error-message" id="uploadErrorMessage" style="display: none;"></div>
                 <div class="buttons-row">
                     <button class="button" id="chooseFileBtn">Pilih File</button>
+                    <button class="button button-secondary" id="processUploadBtn" disabled>Proses Gambar</button>
                     <button class="button button-secondary" id="viewUploadResultBtn" disabled>Lihat Hasil</button>
                 </div>
             </div>
@@ -60,15 +62,21 @@
             <button class="back-button" id="backFromCamera">← Kembali</button>
             <h1>Kamera</h1>
             <div class="feature-container">
-                
                 <div class="camera-placeholder" id="cameraPlaceholder">
-                    <div id="webcamContainer" class="mt-3 d-none">
-                        <img id="webcamFeed" class="camera-placeholder">
+                    <div id="webcamContainer" class="mt-3">
+                        <img id="webcamFeed" class="camera-placeholder" style="display: none;">
+                        <div id="webcamPlaceholder" class="camera-placeholder-text">
+                            <div class="icon">📷</div>
+                            <p>Klik tombol "Mulai Kamera" untuk mengakses kamera</p>
+                        </div>
                     </div>
                     <canvas id="canvasElement" style="display: none;"></canvas>
                 </div>
-                <div class="buttons-row">
+                <div class="error-message" id="cameraErrorMessage" style="display: none;"></div>
+                <div class="camera-controls">
                     <button class="button" id="startWebcam">Mulai Kamera</button>
+                    <button class="capture-button" id="captureBtn" style="display: none;">Ambil Foto</button>
+                    <button class="button button-secondary" id="viewCameraResultBtn" style="display: none;">Lihat Hasil</button>
                 </div>
             </div>
         </div>
@@ -77,12 +85,23 @@
         <div id="resultSection" class="section">
             <button class="back-button" id="backFromResult">← Kembali</button>
             <h1>Hasil</h1>
-            <div class="feature-container result-container">
-                <div class="result-image-container">
-                    <img id="resultImage" alt="Hasil gambar">
+            <div class="result-card">
+                <div class="result-content">
+                    <div class="face-crop-container" id="faceCropContainer">
+                        <img id="faceCropImage" alt="Crop wajah">
+                        <div class="user-info">
+                            <p><strong>Nama:</strong> <span id="resultNama"></span></p>
+                            <p><strong>Ras:</strong> <span id="resultRas">Tidak Diketahui</span></p>
+                        </div>
+                    </div>
+                    
+                    <div class="error-message" id="resultErrorMessage"></div>
+                    
+                    <div class="buttons-row">
+                        <button class="button" id="downloadCropBtn">Unduh Gambar</button>
+                        <button class="button button-secondary" id="newSessionBtn">Sesi Baru</button>
+                    </div>
                 </div>
-                <button class="button" id="downloadBtn">Unduh Gambar</button>
-                <button class="button button-secondary" id="newSessionBtn">Sesi Baru</button>
             </div>
         </div>
     </div>
@@ -97,7 +116,9 @@
         const userData = {
             name: '',
             id: '',
-            imageData: null
+            imageData: null,
+            faceCropData: null,
+            race: 'Tidak Diketahui'
         };
 
         // Navigation between sections
@@ -118,14 +139,22 @@
         const backFromCamera = document.getElementById('backFromCamera');
         const backFromResult = document.getElementById('backFromResult');
 
+        const processUploadBtn = document.getElementById('processUploadBtn');
         const viewUploadResultBtn = document.getElementById('viewUploadResultBtn');
+        const viewCameraResultBtn = document.getElementById('viewCameraResultBtn');
 
-        const resultNamaDisplay = document.getElementById('resultNamaDisplay');
-        const resultIdDisplay = document.getElementById('resultIdDisplay');
-        const resultMethodDisplay = document.getElementById('resultMethodDisplay');
-        const resultImage = document.getElementById('resultImage');
-        const downloadBtn = document.getElementById('downloadBtn');
+        const faceCropContainer = document.getElementById('faceCropContainer');
+        const faceCropImage = document.getElementById('faceCropImage');
+        const resultNama = document.getElementById('resultNama');
+        const resultRas = document.getElementById('resultRas');
+
+        const downloadCropBtn = document.getElementById('downloadCropBtn');
         const newSessionBtn = document.getElementById('newSessionBtn');
+
+        // Error message elements
+        const uploadErrorMessage = document.getElementById('uploadErrorMessage');
+        const cameraErrorMessage = document.getElementById('cameraErrorMessage');
+        const resultErrorMessage = document.getElementById('resultErrorMessage');
 
         // Step 1 to Step 2 - Enter name and proceed
         lanjutButton.addEventListener('click', () => {
@@ -181,10 +210,72 @@
             }
         });
 
+        // Process uploaded image
+        processUploadBtn.addEventListener('click', async () => {
+            if (!userData.tempImageData) {
+                uploadErrorMessage.textContent = 'Tidak ada gambar untuk diproses';
+                uploadErrorMessage.style.display = 'block';
+                return;
+            }
+
+            processUploadBtn.disabled = true;
+            processUploadBtn.textContent = 'Memproses...';
+
+            try {
+                // Create a form data object
+                const formData = new FormData();
+                
+                // Convert base64 to blob
+                const response = await fetch(userData.tempImageData);
+                const blob = await response.blob();
+                formData.append('file', blob, 'image.jpg');
+                
+                // Send the image to the server for processing
+                const result = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await result.json();
+                
+                if (data.status === 'success') {
+                    // Store the processed image data
+                    userData.faceCropData = data.face_crop;
+                    userData.race = data.race || 'Tidak Diketahui';
+                    
+                    // Enable the view result button
+                    viewUploadResultBtn.disabled = false;
+                    uploadErrorMessage.style.display = 'none';
+                } else {
+                    // Display error message
+                    uploadErrorMessage.textContent = data.message || 'Terjadi kesalahan saat memproses gambar';
+                    uploadErrorMessage.style.display = 'block';
+                    
+                    // Still store the result image if available
+                    if (data.result_image) {
+                        userData.imageData = data.result_image;
+                        viewUploadResultBtn.disabled = false;
+                    }
+                }
+            } catch (error) {
+                console.error('Error processing image:', error);
+                uploadErrorMessage.textContent = 'Terjadi kesalahan saat memproses gambar';
+                uploadErrorMessage.style.display = 'block';
+            } finally {
+                processUploadBtn.disabled = false;
+                processUploadBtn.textContent = 'Proses Gambar';
+            }
+        });
+
         // View Results buttons
         viewUploadResultBtn.addEventListener('click', () => {
             displayResults();
             switchSection(uploadSection, resultSection);
+        });
+
+        viewCameraResultBtn.addEventListener('click', () => {
+            displayResults();
+            switchSection(cameraSection, resultSection);
         });
 
         // New session button
@@ -195,35 +286,43 @@
             userData.id = '';
             userData.method = '';
             userData.imageData = null;
+            userData.faceCropData = null;
+            userData.race = 'Tidak Diketahui';
+            userData.tempImageData = null;
             
-            if (stream) {
-                stream.getTracks().forEach(track => track.stop());
-                stream = null;
+            // Reset UI elements
+            faceCropContainer.style.display = 'none';
+            downloadCropBtn.style.display = 'none';
+            uploadErrorMessage.style.display = 'none';
+            cameraErrorMessage.style.display = 'none';
+            resultErrorMessage.style.display = 'none';
+            
+            // Reset webcam if active
+            if (window.stream) {
+                window.stream.getTracks().forEach(track => track.stop());
+                window.stream = null;
             }
             
-            videoElement.style.display = 'none';
-            placeholderText.style.display = 'block';
-            startCameraBtn.textContent = 'Mulai Kamera';
-            viewUploadResultBtn.disabled = true;
+            // Reset webcam UI
+            document.getElementById('webcamFeed').style.display = 'none';
+            document.getElementById('webcamPlaceholder').style.display = 'block';
+            document.getElementById('startWebcam').textContent = 'Mulai Kamera';
+            document.getElementById('captureBtn').style.display = 'none';
+            viewCameraResultBtn.style.display = 'none';
             
             // Reset upload area
-            dropArea.innerHTML = `<div class="icon">📁</div><p>Seret file gambar ke sini atau klik untuk memilih</p>`;
-            const newFileInput = document.createElement('input');
-            newFileInput.type = 'file';
-            newFileInput.id = 'fileUpload';
-            newFileInput.accept = 'image/*';
-            newFileInput.addEventListener('change', handleFiles, false);
-            dropArea.appendChild(newFileInput);
+            resetUploadArea();
             
+            // Navigate back to start
             switchSection(resultSection, namaSection);
         });
 
-        // Download button
-        downloadBtn.addEventListener('click', () => {
-            if (userData.imageData) {
+        // Download buttons
+        downloadCropBtn.addEventListener('click', () => {
+            if (userData.faceCropData) {
                 const link = document.createElement('a');
-                link.href = userData.imageData;
-                link.download = `${userData.name}_${userData.id}.png`;
+                link.href = userData.faceCropData;
+                link.download = `${userData.name}_crop_${userData.id}.jpg`;
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
@@ -246,11 +345,23 @@
         }
 
         function displayResults() {
-            if (userData.imageData) {
-                resultImage.src = userData.imageData;
+            resultNama.textContent = userData.name;
+            resultRas.textContent = userData.race;
+            
+            if (userData.faceCropData) {
+                faceCropImage.src = userData.faceCropData;
+                faceCropContainer.style.display = 'flex';
+                downloadCropBtn.style.display = 'inline-block';
+            } else {
+                faceCropContainer.style.display = 'none';
+                downloadCropBtn.style.display = 'none';
+                
+                if (userData.imageData) {
+                    resultErrorMessage.textContent = 'Tidak ada wajah terdeteksi dalam gambar';
+                    resultErrorMessage.style.display = 'block';
+                }
             }
         }
-
 
         // File upload handling
         const dropArea = document.getElementById('drop-area');
@@ -296,31 +407,43 @@
             handleFiles({target: {files}});
         }
 
+        function resetUploadArea() {
+            dropArea.innerHTML = `<div class="icon">📁</div><p>Seret file gambar ke sini atau klik untuk memilih</p>`;
+            const newFileInput = document.createElement('input');
+            newFileInput.type = 'file';
+            newFileInput.id = 'fileUpload';
+            newFileInput.accept = 'image/*';
+            newFileInput.addEventListener('change', handleFiles, false);
+            dropArea.appendChild(newFileInput);
+            
+            processUploadBtn.disabled = true;
+            viewUploadResultBtn.disabled = true;
+        }
+
         function handleFiles(e) {
             const files = e.target.files;
             if (files.length > 0) {
                 const file = files[0];
                 if (file.type.startsWith('image/')) {
-                    // Read the file and set as image data
+                    // Read the file and set as temporary image data
                     const reader = new FileReader();
                     reader.onload = function(event) {
-                        userData.imageData = event.target.result;
+                        userData.tempImageData = event.target.result;
                         dropArea.innerHTML = `<div class="icon">✅</div><p>File dipilih: ${file.name}</p><img src="${event.target.result}" alt="Preview" class="preview-image">`;
-                        viewUploadResultBtn.disabled = false;
+                        processUploadBtn.disabled = false;
+                        viewUploadResultBtn.disabled = true; // Disable until processed
+                        uploadErrorMessage.style.display = 'none';
                     };
                     reader.readAsDataURL(file);
                 } else {
                     dropArea.innerHTML = `<div class="icon">❌</div><p>File harus berupa gambar</p>`;
+                    processUploadBtn.disabled = true;
                     viewUploadResultBtn.disabled = true;
+                    uploadErrorMessage.textContent = 'File harus berupa gambar';
+                    uploadErrorMessage.style.display = 'block';
                     
                     setTimeout(() => {
-                        dropArea.innerHTML = `<div class="icon">📁</div><p>Seret file gambar ke sini atau klik untuk memilih</p>`;
-                        const newFileInput = document.createElement('input');
-                        newFileInput.type = 'file';
-                        newFileInput.id = 'fileUpload';
-                        newFileInput.accept = 'image/*';
-                        newFileInput.addEventListener('change', handleFiles, false);
-                        dropArea.appendChild(newFileInput);
+                        resetUploadArea();
                     }, 2000);
                 }
             }
