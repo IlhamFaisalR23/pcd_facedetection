@@ -16,7 +16,7 @@ import joblib
 import tempfile
 
 # Konfigurasi path
-DATASET_PATH = "dataset"  # Folder untuk menyimpan dataset wajah
+DATASET_PATH = "preprocessed_dataset"  # Folder untuk menyimpan dataset wajah
 MODEL_PATH = "dnn_models"  # Folder untuk model deteksi wajah
 
 # Inisialisasi FastAPI
