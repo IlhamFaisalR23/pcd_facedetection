@@ -8,7 +8,7 @@ from sklearn.metrics import classification_report
 import joblib
 from deepface import DeepFace
 
-DATASET_PATH = "dataset"
+DATASET_PATH = "preprocessed_dataset"
 
 def train_face_similarity_model(DATASET_PATH, MODEL="face_similarity_model.pkl"):
     if os.path.exists(MODEL):
@@ -173,3 +173,7 @@ def train_ethnics_model(DATASET_PATH, MODEL="ethnics_detection_model.pkl"):
     # Simpan model
     joblib.dump(svc, MODEL)
     print(f"\n✅ Model berhasil disimpan di {MODEL}")
+
+
+train_face_similarity_model(DATASET_PATH)
+train_ethnics_model(DATASET_PATH)

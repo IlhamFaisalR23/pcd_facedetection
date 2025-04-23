@@ -22,11 +22,12 @@ import joblib
 import tempfile
 
 # Config
-DATASET_PATH = "dataset"
+DATASET_PATH = "preprocessed_dataset"
 SIMILARITY_MODEL_PATH = "face_similarity_model.pkl"
 ETHNICS_MODEL_PATH = "ethnics_detection_model.pkl"
 SIMILARITY_SVC_MODEL = None
 ETHNICS_SVC_MODEL = None
+MODEL_PATH = "dnn_models"
 
 # Inisialisasi FastAPI
 app = FastAPI()
@@ -113,7 +114,7 @@ def predict_face_identity_camera(face):
     except Exception as e:
         return "Tidak Dikenali"
 
-def predict_ethnics(img_path, MODEL="my_model.pkl"):
+def predict_ethnics(img_path, MODEL="ethnics_detection_model.pkl"):
     knn = joblib.load(MODEL)
     embedding = DeepFace.represent(
         img_path=img_path,
@@ -263,33 +264,6 @@ def crop_face(image: np.ndarray, detection: Dict, padding=0.2) -> np.ndarray:
     face_crop = image[y1:y2, x1:x2]
     return face_crop
 
-# Fungsi untuk prediksi etnis
-def predict_ethnics(img_path, model_filename="my_model.pkl"):
-    MODEL = os.path.join(os.path.dirname(os.path.abspath(__file__)), model_filename)
-    
-    if not os.path.exists(MODEL):
-        print(f"Model file {MODEL} not found!")
-        return "Model Not Found", {}
-    
-    # Load model KNN
-    knn = joblib.load(MODEL)
-    
-    # Ekstrak fitur wajah menggunakan DeepFace
-    embedding = DeepFace.represent(
-        img_path=img_path,
-        model_name="VGG-Face",
-        enforce_detection=False
-    )[0]["embedding"]
-
-    # Prediksi etnis
-    pred_class = knn.predict([embedding])[0]
-    
-    # Hitung probabilitas
-    probas = knn.predict_proba([embedding])[0]
-    class_labels = knn.classes_
-
-    return pred_class, dict(zip(class_labels, probas))
-
 # =====================================
 # ROUTE UTAMA
 # =====================================
@@ -380,13 +354,12 @@ async def upload_image(file: UploadFile = File(...)):
 # =====================================
 
 def generate_frames():
-    cap = cv2.VideoCapture(0)  # Akses webcam
+    cap = cv2.VideoCapture(0)
     detector = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
     frame_lock = threading.Lock()
     current_frame = None
 
     def detect_loop():
-        """Thread untuk deteksi wajah"""
         nonlocal current_frame
         while True:
             with frame_lock:
@@ -396,7 +369,6 @@ def generate_frames():
 
             time.sleep(1.0)
 
-    # Jalankan thread deteksi
     threading.Thread(target=detect_loop, daemon=True).start()
 
     try:
@@ -404,20 +376,17 @@ def generate_frames():
             ret, frame = cap.read()
             if not ret:
                 break
-                
             frame = cv2.resize(frame, (480, 240))
             with frame_lock:
                 current_frame = frame.copy()
 
-            # Deteksi wajah
-            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            faces = detector.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
-            detections = [{"box": (x, y, w, h)} for (x, y, w, h) in faces]
+            # Deteksi wajah dalam gambar
+            detections = detect_faces(frame)
             
-            # Gambar kotak di wajah
+            # Gambar bounding box dan prediksi etnis
             frame_with_box = draw_detections(frame.copy(), detections)
 
-            # Konversi frame ke JPEG
+            # Encode gambar menjadi JPEG untuk streaming
             _, buffer = cv2.imencode('.jpg', frame_with_box)
             yield (b'--frame\r\n'
                    b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')

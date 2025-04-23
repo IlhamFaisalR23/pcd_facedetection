@@ -63,7 +63,7 @@
         <h1>Kamera</h1>
         <div class="feature-container">
           <div class="camera-placeholder" id="cameraPlaceholder">
-            <div id="webcamContainer" class="mt-3">
+            <div id="webcamContainer" class="mt-3 d-none">
               <img id="webcamFeed" class="camera-placeholder" style="display: none;">
               <div id="webcamPlaceholder" class="camera-placeholder-text">
                 <div class="icon">📷</div>
@@ -439,12 +439,14 @@
             if (webcamContainer.classList.contains('d-none')) {
                 webcamFeed.src = '/webcam';
                 webcamContainer.classList.remove('d-none');
+                webcamFeed.style.display = 'block';
                 button.textContent = 'Stop Webcam';
                 button.classList.remove('btn-primary');
                 button.classList.add('btn-danger');
             } else {
                 webcamFeed.src = '';
                 webcamContainer.classList.add('d-none');
+                webcamFeed.style.display = 'none';
                 button.textContent = 'Start Webcam';
                 button.classList.remove('btn-danger');
                 button.classList.add('btn-primary');
